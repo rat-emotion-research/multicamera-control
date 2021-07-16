@@ -69,9 +69,10 @@ reader = VideoReader()
 def gen():
     while True:
         raw_frame = reader.get_frame()
-        decoded_frame = Image.open(BytesIO(raw_frame))
-        small_frame = decoded_frame.resize((320, 240))
-        small_frame = small_frame.tobytes("jpg", "rgb")
+        small_frame = raw_frame.to_bytes()
+        # decoded_frame = Image.open(BytesIO(raw_frame))
+        # small_frame = decoded_frame.resize((320, 240))
+        # small_frame = small_frame.tobytes("jpg", "rgb")
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + small_frame + b'\r\n\r\n')
 
