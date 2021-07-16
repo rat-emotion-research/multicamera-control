@@ -1,35 +1,40 @@
 import logo from './logo.svg';
-import './App.css';
+import './App.scss';
 
-const response = fetch('/sensors', {
-  method: 'GET',
-  mode: 'no-cors',
-  cache: 'no-cache',
-  credentials: 'same-origin',
-  // body: JSON.stringify(data)
-})
-  .then(response => response.json())
-  .then(data => console.log(data))
+import React, { Component } from 'react';
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+class App extends Component {
+  constructor() {
+    super()
+    this.state = {sensors: []}
+  }
+  
+  componentDidMount() {
+    this.getSensors()
+  }
+  
+  async getSensors() {
+    const response = await fetch('/sensors', {
+      method: 'GET',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      credentials: 'same-origin',
+    })
+    let data = await response.json()
+    console.log('Sensors', data)
+    this.setState({sensors: data})
+  }
+
+  render() {
+    let sensorDisplay = this.state.sensors.map(
+      sensor => <img key={sensor} src={`http://${sensor}/video_feed`}></img>)
+
+    return (
+      <div className="App">
+        {sensorDisplay}
+      </div>
+    );
+  }
 }
 
 export default App;
