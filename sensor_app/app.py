@@ -34,8 +34,7 @@ class VideoReader:
                 framerate=FPS,
             )
             .output(
-                'pipe:', 
-                t=10,
+                'pipe:',
                 bufsize='128M',
                 format=FORMAT,
                 codec='copy',
@@ -69,7 +68,7 @@ reader = VideoReader()
 def gen():
     while True:
         raw_frame = reader.get_frame()
-        small_frame = raw_frame.to_bytes()
+        small_frame = raw_frame #.to_bytes()
         # decoded_frame = Image.open(BytesIO(raw_frame))
         # small_frame = decoded_frame.resize((320, 240))
         # small_frame = small_frame.tobytes("jpg", "rgb")
