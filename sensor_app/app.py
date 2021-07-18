@@ -4,7 +4,7 @@ import re
 import numpy as np
 import cv2
 
-from multiprocessing import Queue, Process, Pipe()
+from multiprocessing import Queue, Process, Pipe
 from io import BytesIO
 from PIL import Image
 from flask import Flask, Response, render_template
@@ -103,7 +103,7 @@ def consume_frames(decoder, record_flag_read, **kwargs):
     record = False 
     writer = None
     while True:
-        if record_flag_read.poll()
+        if record_flag_read.poll():
             old_record = record
             record = pipe.recv()
             
@@ -154,7 +154,7 @@ def start_recording():
     return 
 
 @app.route('/stop_recording')
-def start_recording():
+def stop_recording():
     record_flag_write.send(False)
     return 
 
