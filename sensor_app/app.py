@@ -12,9 +12,12 @@ from flask import Flask, Response, render_template
 app = Flask(__name__)
 
 FPS = 30
-FORMAT = 'h264'
 BITRATE = '25M'
 CHUNK_SIZE = 2**14
+FORMAT = 'mjpeg'
+
+# make sure camera is in mjpeg format 
+subprocess.check_output('v4l2-ctl -v pixelformat=MJPG'.split())
 
 capture_queue = Queue()
 record_flag_read, record_flag_write = Pipe()
@@ -151,12 +154,12 @@ def video_feed():
 @app.route('/start_recording')
 def start_recording():
     record_flag_write.send(True)
-    return 
+    return Response()
 
 @app.route('/stop_recording')
 def stop_recording():
     record_flag_write.send(False)
-    return 
+    return Response()
 
 shared_kwargs = {
     'capture_queue': capture_queue,
