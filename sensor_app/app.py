@@ -105,7 +105,7 @@ def consume_frames(decoder, record_flag_read, **kwargs):
     while True:
         if record_flag_read.poll():
             old_record = record
-            record = pipe.recv()
+            record = record_flag_read.recv()
             
             # Create or stop a writer
             if record and not writer:   
