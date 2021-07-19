@@ -7,17 +7,21 @@ import cv2
 from multiprocessing import Queue, Process, Pipe
 from io import BytesIO
 from PIL import Image
-from flask import Flask, Response, render_template
+from flask import Flask, Response, render_template, jsonify, request
+from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 FPS = 30
-BITRATE = '25M'
-CHUNK_SIZE = 2**14
+BITRATE = '25M'         
+CHUNK_SIZE = 2**14      # How many bytes for ffmpeg to write/read 
 FORMAT = 'mjpeg'
 
-# make sure camera is in mjpeg format 
-subprocess.check_output('v4l2-ctl -v pixelformat=MJPG'.split())
+# Apply the default camera settings
+subprocess.check_call(
+    'bash default-v4l2-settings.sh'.split())
 
 capture_queue = Queue()
 record_flag_read, record_flag_write = Pipe()
@@ -29,11 +33,6 @@ class VideoReader:
 
     def get_frame_size(self):
         """Get the number of bytes in each image"""
-        # vidcap_settings = subprocess.check_output('v4l2-ctl -V'.split())
-        # vidcap_settings = vidcap_settings.decode()
-        # match = re.search(r'Size Image\s*\:\s*(\d+)', vidcap_settings)
-        # image_size = int(match.groups()[0])
-        # print(image_size)
         image_size = CHUNK_SIZE
         return image_size
 
@@ -48,6 +47,7 @@ class VideoReader:
             )
             .output(
                 'pipe:',
+                loglevel='error',
                 bufsize='128M',
                 format=FORMAT,
                 codec='copy',
@@ -70,6 +70,7 @@ def get_writer():
         )
         .output(
             'test.mp4',
+            loglevel='error',
             bufsize='128M',
             codec='copy',
             **{'b:v': BITRATE}
@@ -84,12 +85,12 @@ def get_decoder():
             'pipe:', 
             framerate=FPS,
             format=FORMAT,
-            # pix_fmt='yuv420p',
         )
-        .filter('fps', fps=24, round='up')
+        .filter('fps', fps=12, round='up')
         .filter('scale', 640, 480) # width, height
         .output(
             'pipe:',
+            loglevel='error',
             bufsize='128M',
             format='rawvideo',
             pix_fmt='rgb24',
@@ -160,6 +161,56 @@ def start_recording():
 def stop_recording():
     record_flag_write.send(False)
     return Response()
+
+@app.route('/settings', methods=['GET'])
+def settings():
+    result = subprocess.check_output(['v4l2-ctl', '-d', '0', '-L']).decode('utf-8')
+
+    # Split v4l2 options
+    split_options = re.compile(
+        r"(\w+\s+[\w\d]+\s+\(\w+\)\s+\:.*(?:\n\s+\d+.*)*)",
+    )
+
+    # Extract options from lines
+    extract_option_details = re.compile(
+        '^\s*(?P<name>[\w\_]+)'             # Name
+        '\s[\w\d]+'
+        '\s\((?P<dtype>\w+)\)'              # Dtype
+        '.*?\:\s' 
+        '(min\=(?P<min>\-?\d+)\s)?'         # Min
+        '(max\=(?P<max>\d+)\s)?'            # Max
+        '(step\=(?P<step>\d+)\s)?'          # Step
+        '(default\=(?P<default>\d+)\s?)?'   # Default
+        '(value\=(?P<value>\d+)\s?)?'       # Value
+    )
+
+    # Extract menu items 
+    extract_menu_items = re.compile(
+        '\s*(?P<value>\d+)\:\s*(?P<display>\w+)'
+    )
+
+    results = []
+    options = split_options.findall(result)
+    for option in options:
+        main, *items = option.split('\n')
+        result = extract_option_details.match(main).groupdict()
+        result['options'] = [
+            extract_menu_items.match(i).groupdict() for i in items]
+        results.append(result)
+
+    print(results)
+    return jsonify({'data': results})
+
+@app.route('/settings/<string:setting>', methods=['PUT'])
+def set_setting(setting):
+    value = request.get_data(cache=False, as_text=True)
+    print('update:', setting, value)
+    try: 
+        result = subprocess.check_output(['v4l2-ctl', '-c', f"{setting}={value}"])
+        return jsonify({'results': 'good'})
+    except Exception as e:
+        print(e)
+        return jsonify({'errmsg': str(e)}), 500
 
 shared_kwargs = {
     'capture_queue': capture_queue,
