@@ -70,7 +70,7 @@ def get_writer():
         )
         .output(
             'test.mp4',
-            loglevel='error',
+            # loglevel='error',
             bufsize='128M',
             codec='copy',
             **{'b:v': BITRATE}
